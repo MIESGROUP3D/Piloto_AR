@@ -28,9 +28,18 @@
       add('Pidiendo permiso de cámara…');
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-        document.getElementById('v').srcObject = stream;
+        const v = document.getElementById('v');
+        v.srcObject = stream;
         const track = stream.getVideoTracks()[0];
-        add('✅ CÁMARA OK -> ' + (track ? track.label : 'sin etiqueta'), 'ok');
+        add('✅ getUserMedia OK -> ' + (track ? track.label : 'sin etiqueta'), 'ok');
+        try { await v.play(); add('play() OK', 'ok'); }
+        catch (pe) { add('play() falló: ' + pe.name + ' ' + pe.message, 'err'); }
+        // ¿Llegan fotogramas? (negro = videoWidth se queda en 0)
+        setTimeout(() => {
+          add('readyState=' + v.readyState + '  tamaño video=' + v.videoWidth + 'x' + v.videoHeight,
+              v.videoWidth > 0 ? 'ok' : 'err');
+          if (v.videoWidth === 0) add('=> Hay permiso pero NO llegan imágenes (cámara entregada por iOS pero sin fotogramas).', 'err');
+        }, 1500);
       } catch (e) {
         add('❌ ERROR: ' + e.name + ' — ' + e.message, 'err');
         if (e.name === 'NotAllowedError') add('=> Permiso denegado. Activa la cámara en el candado 🔒 de la barra y recarga.', 'err');

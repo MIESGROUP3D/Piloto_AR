@@ -10,8 +10,8 @@
     * { margin:0; padding:0; box-sizing:border-box; }
     html, body { width:100%; height:100%; overflow:hidden; font-family:system-ui,sans-serif; background:#000; }
 
-    /* El lienzo de A-Frame debe ser transparente para ver el vídeo de la cámara
-       (que MindAR pone por detrás). En iOS hay que forzarlo. */
+    /* Capas: cámara (#cam) detrás, lienzo AR transparente delante. */
+    a-scene { position:fixed !important; inset:0 !important; z-index:2 !important; background:transparent !important; }
     canvas.a-canvas, .a-canvas { background:transparent !important; }
 
     /* Capa de inicio: toda la pantalla es el disparador (iOS exige un toque) */
@@ -39,7 +39,7 @@
        Garantiza que la cámara se vea aunque MindAR no la pinte (bug iOS). */
     #cam {
       position:fixed; inset:0; width:100%; height:100%;
-      object-fit:cover; z-index:-1; background:#000;
+      object-fit:cover; z-index:1; background:#000;
     }
   </style>
 </head>
@@ -81,13 +81,24 @@
     function hideOverlay(){ if(overlayHidden) return; overlayHidden=true; tapStart.style.opacity='0'; setTimeout(()=>tapStart.style.display='none',400); }
 
     // El toque (gesto de usuario, obligatorio en iOS) arranca la cámara
+    // Forzar lienzo transparente por código (CSS no basta en iOS: el framebuffer
+    // WebGL se limpia en negro opaco y tapa la cámara).
+    function makeCanvasTransparent(){
+      const r = scene.renderer;
+      if (r){ r.setClearColor(0x000000, 0); r.setClearAlpha(0); r.autoClearColor = true; }
+    }
+
     function begin(){
       if (started) return; started = true;
       setStatus('⏳ pidiendo permiso de cámara…');
       const go = () => {
+        makeCanvasTransparent();
         const sys = scene.systems['mindar-image-system'];
         if (!sys){ setStatus('❌ MindAR no cargó (revisa la conexión).'); return; }
         sys.start();
+        // re-forzar tras arrancar el render
+        setTimeout(makeCanvasTransparent, 500);
+        setTimeout(makeCanvasTransparent, 1500);
       };
       if (scene.hasLoaded) go();
       else scene.addEventListener('loaded', go, { once:true });
